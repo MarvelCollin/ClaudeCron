@@ -11,19 +11,48 @@
       <section class="hero">
         <div>
           <p class="eyebrow">ClaudeCron</p>
-          <h1>Schedule Brave to send <span>hi</span> with Haiku.</h1>
+          <h1>Recurring <span>Claude</span> sessions.</h1>
         </div>
-        <button id="openLogin" type="button">Open Claude Login</button>
+        <div class="hero-actions">
+          <button id="openLogin" type="button" class="secondary">Open Claude Login</button>
+          <button id="runNow" type="button" class="secondary">Run Now</button>
+        </div>
       </section>
 
       <section class="panel">
-        <form id="scheduleForm" class="schedule-form">
-          <label for="scheduleAt">Run time</label>
-          <div class="form-row">
-            <input id="scheduleAt" name="scheduleAt" type="datetime-local" required>
-            <button type="submit">Schedule</button>
-            <button id="runNow" type="button" class="secondary">Run Now</button>
+        <h2>New Schedule</h2>
+        <div class="config-row">
+          <label for="triggerMessage">Trigger message</label>
+          <input id="triggerMessage" type="text" placeholder="hi" value="hi">
+        </div>
+        <form id="scheduleForm">
+          <div class="field">
+            <label for="scheduleLabel">Label <span class="optional">(optional)</span></label>
+            <input id="scheduleLabel" type="text" placeholder="e.g. Weekday mornings">
           </div>
+          <div class="field">
+            <div class="field-header">
+              <label>Days</label>
+              <div class="quick-select">
+                <button type="button" data-quick="weekdays">Weekdays</button>
+                <button type="button" data-quick="weekend">Weekend</button>
+                <button type="button" data-quick="alldays">All</button>
+              </div>
+            </div>
+            <div class="day-picker" id="dayPicker"></div>
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label>Hours</label>
+              <div class="quick-select">
+                <button type="button" data-quick="business">9-17</button>
+                <button type="button" data-quick="allhours">All</button>
+                <button type="button" data-quick="clearhours">Clear</button>
+              </div>
+            </div>
+            <div class="hour-grid" id="hourGrid"></div>
+          </div>
+          <button type="submit">Create Schedule</button>
         </form>
         <p id="status" class="status">Ready.</p>
       </section>
@@ -34,7 +63,10 @@
           <div id="schedules" class="list"></div>
         </div>
         <div class="panel">
-          <h2>Run Log</h2>
+          <div class="log-header">
+            <h2>Run Log</h2>
+            <span id="engineStatus" class="engine-badge">Idle</span>
+          </div>
           <div id="logs" class="list"></div>
         </div>
       </section>

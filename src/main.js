@@ -2,114 +2,129 @@ const path = require('path');
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { randomUUID } = require('crypto');
 const { openClaudeLogin, runClaudeMessage } = require('./automation');
-const { registerSchedule, unregisterSchedule } = require('./scheduler');
-const { appendRunLog, initStore, readRunLog, readSchedules, writeSchedules } = require('./store');
+const store = require('./store');
+const engine = require('./engine');
 
-const message = 'hi';
+let win = null;
 
 function profileDir() {
   return path.join(app.getPath('userData'), 'brave-profile');
 }
 
-function launchConfig() {
-  return {
-    appPath: app.getAppPath(),
-    cwd: app.isPackaged ? path.dirname(process.execPath) : app.getAppPath(),
-    exe: process.execPath,
-    isPackaged: app.isPackaged
-  };
-}
-
-function taskArg() {
-  const arg = process.argv.find(item => item.startsWith('--run-task='));
-  return arg ? arg.slice('--run-task='.length) : null;
-}
-
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 860,
-    height: 680,
+  win = new BrowserWindow({
+    width: 960,
+    height: 780,
     minWidth: 720,
     minHeight: 560,
     title: 'ClaudeCron',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(__dirname, 'preload.js')
-    }
+      preload: path.join(__dirname, 'preload.js'),
+    },
   });
   win.loadFile(path.join(__dirname, 'index.html'));
+  win.on('closed', () => { win = null; });
 }
 
-function markSchedule(id, patch) {
-  const schedules = readSchedules();
-  const next = schedules.map(schedule => (schedule.id === id ? { ...schedule, ...patch } : schedule));
-  writeSchedules(next);
-  return next.find(schedule => schedule.id === id);
+function message() {
+  return store.readConfig().message || 'hi';
 }
 
-async function runTask(id, source) {
-  const startedAt = new Date().toISOString();
-  try {
-    await runClaudeMessage({ userDataDir: profileDir(), message });
-    markSchedule(id, { lastRunAt: new Date().toISOString(), status: source === 'schedule' ? 'done' : 'scheduled' });
-    appendRunLog({ id: randomUUID(), scheduleId: id, source, status: 'success', startedAt, finishedAt: new Date().toISOString() });
-  } catch (error) {
-    markSchedule(id, { lastError: error.message, lastRunAt: new Date().toISOString(), status: source === 'schedule' ? 'failed' : 'scheduled' });
-    appendRunLog({ id: randomUUID(), scheduleId: id, source, status: 'failed', error: error.message, startedAt, finishedAt: new Date().toISOString() });
-    throw error;
+function snapshot() {
+  return {
+    schedules: store.readSchedules(),
+    logs: store.readRunLog(),
+    engine: engine.status(),
+    config: store.readConfig(),
+  };
+}
+
+function notifyRenderer() {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('state:updated', snapshot());
   }
 }
 
-ipcMain.handle('app:load', () => ({
-  logs: readRunLog(),
-  schedules: readSchedules()
-}));
+ipcMain.handle('app:load', () => snapshot());
 
-ipcMain.handle('automation:openLogin', async () => {
+ipcMain.handle('automation:openLogin', () => {
   openClaudeLogin(profileDir());
   return true;
 });
 
 ipcMain.handle('automation:runNow', async () => {
-  const id = `manual-${Date.now()}`;
-  await runTask(id, 'manual');
-  return { logs: readRunLog(), schedules: readSchedules() };
+  if (engine.status().locked) throw new Error('A task is already running.');
+  const startedAt = new Date().toISOString();
+  try {
+    await runClaudeMessage({ userDataDir: profileDir(), message: message() });
+    store.appendRunLog({
+      id: randomUUID(), slot: 'manual', source: 'manual', status: 'success',
+      startedAt, finishedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    store.appendRunLog({
+      id: randomUUID(), slot: 'manual', source: 'manual', status: 'failed',
+      error: err.message, startedAt, finishedAt: new Date().toISOString(),
+    });
+    throw err;
+  }
+  return snapshot();
 });
 
-ipcMain.handle('schedule:create', async (_, payload) => {
-  const at = String(payload.at || '').trim();
-  const when = new Date(at);
-  if (!at || Number.isNaN(when.getTime())) throw new Error('Waktu schedule tidak valid.');
-  if (when.getTime() <= Date.now()) throw new Error('Waktu schedule harus setelah waktu sekarang.');
+ipcMain.handle('schedule:create', (_, payload) => {
+  const label = String(payload.label || '').trim() || 'Untitled';
+  const days = payload.days;
+  const hours = payload.hours;
+  if (!Array.isArray(days) || days.length === 0) throw new Error('Pick at least one day.');
+  if (!Array.isArray(hours) || hours.length === 0) throw new Error('Pick at least one hour.');
+  if (days.some(d => d < 0 || d > 6)) throw new Error('Invalid day.');
+  if (hours.some(h => h < 0 || h > 23)) throw new Error('Invalid hour.');
   const schedule = {
     id: randomUUID(),
-    at,
+    label,
+    days: [...new Set(days)].sort((a, b) => a - b),
+    hours: [...new Set(hours)].sort((a, b) => a - b),
+    enabled: true,
     createdAt: new Date().toISOString(),
-    message,
-    status: 'scheduled'
   };
-  await registerSchedule(schedule, launchConfig());
-  const schedules = readSchedules();
-  writeSchedules([schedule, ...schedules]);
-  return { logs: readRunLog(), schedules: readSchedules() };
+  const all = store.readSchedules();
+  all.push(schedule);
+  store.writeSchedules(all);
+  return snapshot();
 });
 
-ipcMain.handle('schedule:delete', async (_, id) => {
-  await unregisterSchedule(id);
-  writeSchedules(readSchedules().filter(schedule => schedule.id !== id));
-  return { logs: readRunLog(), schedules: readSchedules() };
+ipcMain.handle('schedule:toggle', (_, id) => {
+  const all = store.readSchedules();
+  const target = all.find(s => s.id === id);
+  if (target) target.enabled = !target.enabled;
+  store.writeSchedules(all);
+  return snapshot();
 });
 
-app.whenReady().then(async () => {
-  initStore(app.getPath('userData'));
-  const id = taskArg();
-  if (id) {
-    await runTask(id, 'schedule').catch(() => {});
-    app.quit();
-    return;
-  }
+ipcMain.handle('schedule:delete', (_, id) => {
+  store.writeSchedules(store.readSchedules().filter(s => s.id !== id));
+  return snapshot();
+});
+
+ipcMain.handle('engine:status', () => engine.status());
+
+ipcMain.handle('config:get', () => store.readConfig());
+
+ipcMain.handle('config:set', (_, data) => {
+  store.writeConfig(data);
+  return store.readConfig();
+});
+
+app.whenReady().then(() => {
+  store.initStore(app.getPath('userData'));
   createWindow();
+  engine.start({
+    execute: () => runClaudeMessage({ userDataDir: profileDir(), message: message() }),
+    store,
+    notify: notifyRenderer,
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -119,3 +134,5 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+app.on('before-quit', () => engine.stop());

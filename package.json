@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/automation.js && node --check src/scheduler.js && node --check src/store.js"
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/automation.js && node --check src/engine.js && node --check src/store.js"
   },
   "dependencies": {
     "playwright-core": "^1.53.0"

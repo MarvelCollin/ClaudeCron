@@ -95,7 +95,7 @@ async function runClaudeMessage({ userDataDir, message }) {
     await sendMessage(page);
     await page.waitForTimeout(5000);
   } finally {
-    await context.close();
+    await context.close().catch(() => {});
   }
 }
 
