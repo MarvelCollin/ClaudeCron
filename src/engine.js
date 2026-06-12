@@ -63,16 +63,19 @@ async function tick() {
     return;
   }
   if (retry) return;
-  const { day, hour, key } = slotKey();
+  const { day, hour, minute, key } = slotKey();
   for (const k of exhausted) {
     if (k !== key) exhausted.delete(k);
   }
   if (deps.store.isSlotDone(key)) return;
   if (exhausted.has(key)) return;
   const schedules = deps.store.readSchedules();
-  const match = schedules.some(
-    s => s.enabled !== false && s.days.includes(day) && s.hours.includes(hour)
-  );
+  const match = schedules.some(s => {
+    if (s.enabled === false) return false;
+    if (!s.days.includes(day) || !s.hours.includes(hour)) return false;
+    const mins = s.minutes && s.minutes.length ? s.minutes : [0];
+    return mins.includes(minute);
+  });
   if (!match) return;
   await run(key, 'schedule');
 }

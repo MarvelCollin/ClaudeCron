@@ -28,8 +28,9 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
-function message() {
-  return store.readConfig().message || 'hi';
+function cfg() {
+  const c = store.readConfig();
+  return { message: c.message || 'hi', model: c.model || 'Haiku' };
 }
 
 function snapshot() {
@@ -58,7 +59,8 @@ ipcMain.handle('automation:runNow', async () => {
   if (engine.status().locked) throw new Error('A task is already running.');
   const startedAt = new Date().toISOString();
   try {
-    await runClaudeMessage({ userDataDir: profileDir(), message: message() });
+    const { message, model } = cfg();
+    await runClaudeMessage({ userDataDir: profileDir(), message, model });
     store.appendRunLog({
       id: randomUUID(), slot: 'manual', source: 'manual', status: 'success',
       startedAt, finishedAt: new Date().toISOString(),
@@ -77,15 +79,18 @@ ipcMain.handle('schedule:create', (_, payload) => {
   const label = String(payload.label || '').trim() || 'Untitled';
   const days = payload.days;
   const hours = payload.hours;
+  const minutes = Array.isArray(payload.minutes) && payload.minutes.length ? payload.minutes : [0];
   if (!Array.isArray(days) || days.length === 0) throw new Error('Pick at least one day.');
   if (!Array.isArray(hours) || hours.length === 0) throw new Error('Pick at least one hour.');
   if (days.some(d => d < 0 || d > 6)) throw new Error('Invalid day.');
   if (hours.some(h => h < 0 || h > 23)) throw new Error('Invalid hour.');
+  if (minutes.some(m => m < 0 || m > 59)) throw new Error('Invalid minute.');
   const schedule = {
     id: randomUUID(),
     label,
     days: [...new Set(days)].sort((a, b) => a - b),
     hours: [...new Set(hours)].sort((a, b) => a - b),
+    minutes: [...new Set(minutes)].sort((a, b) => a - b),
     enabled: true,
     createdAt: new Date().toISOString(),
   };
@@ -121,7 +126,10 @@ app.whenReady().then(() => {
   store.initStore(app.getPath('userData'));
   createWindow();
   engine.start({
-    execute: () => runClaudeMessage({ userDataDir: profileDir(), message: message() }),
+    execute: () => {
+      const { message, model } = cfg();
+      return runClaudeMessage({ userDataDir: profileDir(), message, model });
+    },
     store,
     notify: notifyRenderer,
   });

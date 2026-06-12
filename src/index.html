@@ -7,33 +7,29 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">ClaudeCron</p>
-          <h1>Recurring <span>Claude</span> sessions.</h1>
-        </div>
-        <div class="hero-actions">
-          <button id="openLogin" type="button" class="secondary">Open Claude Login</button>
-          <button id="runNow" type="button" class="secondary">Run Now</button>
-        </div>
-      </section>
+    <header class="toolbar">
+      <span class="logo">ClaudeCron</span>
+      <div class="toolbar-right">
+        <label class="cfg-label" for="modelSelect">Model</label>
+        <select id="modelSelect" class="cfg-select">
+          <option value="Haiku">Haiku 4.5</option>
+          <option value="Sonnet">Sonnet 4</option>
+          <option value="Opus">Opus 4</option>
+        </select>
+        <label class="cfg-label" for="triggerMessage">Message</label>
+        <input id="triggerMessage" type="text" placeholder="hi" value="hi" class="cfg-input">
+        <button id="openLogin" type="button">Login</button>
+        <button id="runNow" type="button">Run Now</button>
+      </div>
+    </header>
 
-      <section class="panel">
-        <h2>New Schedule</h2>
-        <div class="config-row">
-          <label for="triggerMessage">Trigger message</label>
-          <input id="triggerMessage" type="text" placeholder="hi" value="hi">
-        </div>
+    <main>
+      <section class="card builder">
         <form id="scheduleForm">
-          <div class="field">
-            <label for="scheduleLabel">Label <span class="optional">(optional)</span></label>
-            <input id="scheduleLabel" type="text" placeholder="e.g. Weekday mornings">
-          </div>
-          <div class="field">
-            <div class="field-header">
-              <label>Days</label>
-              <div class="quick-select">
+          <div class="picker-group">
+            <div class="picker-header">
+              <h3>Days</h3>
+              <div class="chips">
                 <button type="button" data-quick="weekdays">Weekdays</button>
                 <button type="button" data-quick="weekend">Weekend</button>
                 <button type="button" data-quick="alldays">All</button>
@@ -41,10 +37,11 @@
             </div>
             <div class="day-picker" id="dayPicker"></div>
           </div>
-          <div class="field">
-            <div class="field-header">
-              <label>Hours</label>
-              <div class="quick-select">
+
+          <div class="picker-group">
+            <div class="picker-header">
+              <h3>Hours</h3>
+              <div class="chips">
                 <button type="button" data-quick="business">9-17</button>
                 <button type="button" data-quick="allhours">All</button>
                 <button type="button" data-quick="clearhours">Clear</button>
@@ -52,23 +49,41 @@
             </div>
             <div class="hour-grid" id="hourGrid"></div>
           </div>
-          <button type="submit">Create Schedule</button>
+
+          <div class="picker-group">
+            <div class="picker-header">
+              <h3>Minutes</h3>
+              <div class="chips">
+                <button type="button" data-quick="on-hour">:00 only</button>
+                <button type="button" data-quick="every15">Every 15m</button>
+                <button type="button" data-quick="every30">Every 30m</button>
+                <button type="button" data-quick="clearminutes">Clear</button>
+              </div>
+            </div>
+            <div class="minute-grid" id="minuteGrid"></div>
+          </div>
+
+          <div id="preview" class="preview"></div>
+
+          <div class="form-footer">
+            <input id="scheduleLabel" type="text" placeholder="Label (optional)">
+            <button type="submit">Create Schedule</button>
+          </div>
         </form>
         <p id="status" class="status">Ready.</p>
       </section>
 
-      <section class="grid">
-        <div class="panel">
-          <h2>Schedules</h2>
-          <div id="schedules" class="list"></div>
+      <section class="card">
+        <h3>Schedules</h3>
+        <div id="schedules"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <h3>Run Log</h3>
+          <span id="engineStatus" class="badge">Idle</span>
         </div>
-        <div class="panel">
-          <div class="log-header">
-            <h2>Run Log</h2>
-            <span id="engineStatus" class="engine-badge">Idle</span>
-          </div>
-          <div id="logs" class="list"></div>
-        </div>
+        <div id="logs"></div>
       </section>
     </main>
     <script src="renderer.js"></script>
