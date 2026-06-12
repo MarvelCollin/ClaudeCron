@@ -1,32 +1,112 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const { chromium } = require('playwright-core');
 
-function braveCandidates() {
-  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
-  return [
-    'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-    'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-    path.join(local, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe')
-  ];
+const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+
+const KNOWN_BROWSERS = {
+  Chrome: path.join(local, 'Google', 'Chrome', 'User Data'),
+  Edge: path.join(local, 'Microsoft', 'Edge', 'User Data'),
+  Brave: path.join(local, 'BraveSoftware', 'Brave-Browser', 'User Data'),
+};
+
+function regQuery(keyPath, valueName) {
+  try {
+    const args = valueName ? `/v ${valueName}` : '/ve';
+    const out = execSync(`reg query "${keyPath}" ${args}`, {
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    return out;
+  } catch {
+    return null;
+  }
 }
 
-function findBrave() {
-  const brave = braveCandidates().find(file => fs.existsSync(file));
-  if (!brave) throw new Error('Brave tidak ditemukan. Install Brave atau pastikan path default Windows tersedia.');
-  return brave;
+function defaultProgId() {
+  const key = String.raw`HKEY_CURRENT_USER\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice`;
+  const out = regQuery(key, 'ProgId');
+  if (!out) return null;
+  const m = out.match(/ProgId\s+REG_SZ\s+(\S+)/);
+  return m ? m[1] : null;
 }
 
-function openClaudeLogin(userDataDir) {
-  fs.mkdirSync(userDataDir, { recursive: true });
-  const child = spawn(findBrave(), [`--user-data-dir=${userDataDir}`, 'https://claude.ai'], {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true
-  });
+function exeFromProgId(progId) {
+  const key = `HKEY_CLASSES_ROOT\\${progId}\\shell\\open\\command`;
+  const out = regQuery(key);
+  if (!out) return null;
+  const m = out.match(/"([^"]+\.exe)"/i);
+  return m && fs.existsSync(m[1]) ? m[1] : null;
+}
+
+function nameFromProgId(progId) {
+  if (!progId) return null;
+  const id = progId.toLowerCase();
+  if (id.startsWith('msedge')) return 'Edge';
+  if (id.startsWith('chrome')) return 'Chrome';
+  if (id.startsWith('brave')) return 'Brave';
+  return null;
+}
+
+function detectBrowser() {
+  const progId = defaultProgId();
+  const name = nameFromProgId(progId);
+  const exe = progId ? exeFromProgId(progId) : null;
+  const profile = name ? KNOWN_BROWSERS[name] : null;
+  if (exe && name && profile) return { name, exe, profile };
+  return null;
+}
+
+function readDebugPort(profileDir) {
+  try {
+    const raw = fs.readFileSync(path.join(profileDir, 'DevToolsActivePort'), 'utf8').trim();
+    const port = parseInt(raw.split('\n')[0], 10);
+    return port > 0 ? port : null;
+  } catch {
+    return null;
+  }
+}
+
+async function waitForDebugPort(profileDir, timeoutMs = 15_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const port = readDebugPort(profileDir);
+    if (port) return port;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
+}
+
+function launchWithDebug(browser) {
+  const portFile = path.join(browser.profile, 'DevToolsActivePort');
+  try { fs.unlinkSync(portFile); } catch {}
+  const child = spawn(browser.exe, [
+    '--remote-debugging-port=0',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--user-data-dir=' + browser.profile,
+  ], { detached: true, stdio: 'ignore' });
   child.unref();
+}
+
+async function getConnection(browser) {
+  let port = readDebugPort(browser.profile);
+  if (port) {
+    try {
+      return await chromium.connectOverCDP('http://127.0.0.1:' + port);
+    } catch {}
+  }
+
+  launchWithDebug(browser);
+  port = await waitForDebugPort(browser.profile);
+  if (!port) {
+    throw new Error(
+      browser.name + ' is already running. Close it first so ClaudeCron can connect, then it will retry automatically.'
+    );
+  }
+  return chromium.connectOverCDP('http://127.0.0.1:' + port);
 }
 
 async function visible(locator, timeout = 1500) {
@@ -54,12 +134,12 @@ async function findComposer(page) {
   const candidates = [
     page.locator('div[contenteditable="true"]').last(),
     page.locator('textarea').last(),
-    page.getByRole('textbox').last()
+    page.getByRole('textbox').last(),
   ];
   for (const candidate of candidates) {
     if (await visible(candidate, 7000)) return candidate;
   }
-  throw new Error('Composer Claude tidak ditemukan. Login dulu lewat tombol Open Claude Login.');
+  throw new Error('Composer not found. Log into claude.ai in your browser first.');
 }
 
 async function writeMessage(composer, message) {
@@ -80,28 +160,26 @@ async function sendMessage(page) {
   await page.keyboard.press('Enter');
 }
 
-async function runClaudeMessage({ userDataDir, message, model }) {
-  fs.mkdirSync(userDataDir, { recursive: true });
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    executablePath: findBrave(),
-    headless: false,
-    viewport: null,
-    args: ['--start-maximized']
-  });
+async function runClaudeMessage({ message, model }) {
+  const detected = detectBrowser();
+  if (!detected) {
+    throw new Error('No supported default browser found. Set Chrome, Edge, or Brave as your default browser.');
+  }
+
+  const browser = await getConnection(detected);
+  const context = browser.contexts()[0];
+  const page = await context.newPage();
   try {
-    const page = context.pages()[0] || await context.newPage();
-    await page.goto('https://claude.ai/new', { waitUntil: 'domcontentloaded' });
+    await page.goto('https://claude.ai/new', { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await selectModel(page, model);
     const composer = await findComposer(page);
     await writeMessage(composer, message);
     await sendMessage(page);
     await page.waitForTimeout(5000);
   } finally {
-    await context.close().catch(() => {});
+    await page.close().catch(() => {});
+    browser.disconnect();
   }
 }
 
-module.exports = {
-  openClaudeLogin,
-  runClaudeMessage
-};
+module.exports = { detectBrowser, runClaudeMessage };

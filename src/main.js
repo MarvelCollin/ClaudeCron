@@ -1,15 +1,11 @@
 const path = require('path');
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { randomUUID } = require('crypto');
-const { openClaudeLogin, runClaudeMessage } = require('./automation');
+const { detectBrowser, runClaudeMessage } = require('./automation');
 const store = require('./store');
 const engine = require('./engine');
 
 let win = null;
-
-function profileDir() {
-  return path.join(app.getPath('userData'), 'brave-profile');
-}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -34,11 +30,13 @@ function cfg() {
 }
 
 function snapshot() {
+  const browser = detectBrowser();
   return {
     schedules: store.readSchedules(),
     logs: store.readRunLog(),
     engine: engine.status(),
     config: store.readConfig(),
+    browser: browser ? browser.name : null,
   };
 }
 
@@ -50,8 +48,8 @@ function notifyRenderer() {
 
 ipcMain.handle('app:load', () => snapshot());
 
-ipcMain.handle('automation:openLogin', () => {
-  openClaudeLogin(profileDir());
+ipcMain.handle('automation:openClaude', () => {
+  shell.openExternal('https://claude.ai');
   return true;
 });
 
@@ -60,7 +58,7 @@ ipcMain.handle('automation:runNow', async () => {
   const startedAt = new Date().toISOString();
   try {
     const { message, model } = cfg();
-    await runClaudeMessage({ userDataDir: profileDir(), message, model });
+    await runClaudeMessage({ message, model });
     store.appendRunLog({
       id: randomUUID(), slot: 'manual', source: 'manual', status: 'success',
       startedAt, finishedAt: new Date().toISOString(),
@@ -128,7 +126,7 @@ app.whenReady().then(() => {
   engine.start({
     execute: () => {
       const { message, model } = cfg();
-      return runClaudeMessage({ userDataDir: profileDir(), message, model });
+      return runClaudeMessage({ message, model });
     },
     store,
     notify: notifyRenderer,

@@ -12,6 +12,7 @@ const schedulesEl = document.getElementById('schedules');
 const logsEl = document.getElementById('logs');
 const statusEl = document.getElementById('status');
 const engineEl = document.getElementById('engineStatus');
+const browserTag = document.getElementById('browserName');
 
 const modelSelect = document.getElementById('modelSelect');
 
@@ -300,6 +301,11 @@ function render(data) {
       modelSelect.value = data.config.model || 'Haiku';
     }
   }
+  if (data.browser) {
+    browserTag.textContent = data.browser;
+  } else {
+    browserTag.textContent = 'No browser';
+  }
 }
 
 async function act(fn) {
@@ -331,11 +337,10 @@ form.addEventListener('submit', async (e) => {
   resetForm();
 });
 
-document.getElementById('openLogin').addEventListener('click', async () => {
+document.getElementById('openClaude').addEventListener('click', async () => {
   try {
-    setStatus('Opening Brave...');
-    await window.claudeCron.openLogin();
-    setStatus('Login to Claude in the opened Brave window.', 'success');
+    await window.claudeCron.openClaude();
+    setStatus('Opened claude.ai in your default browser.', 'success');
   } catch (err) {
     setStatus(err.message, 'error');
   }

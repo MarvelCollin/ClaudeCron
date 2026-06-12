@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('claudeCron', {
   load: () => ipcRenderer.invoke('app:load'),
-  openLogin: () => ipcRenderer.invoke('automation:openLogin'),
+  openClaude: () => ipcRenderer.invoke('automation:openClaude'),
   runNow: () => ipcRenderer.invoke('automation:runNow'),
   createSchedule: (payload) => ipcRenderer.invoke('schedule:create', payload),
   toggleSchedule: (id) => ipcRenderer.invoke('schedule:toggle', id),
