@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudeCron</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">ClaudeCron</p>
+          <h1>Schedule Brave to send <span>hi</span> with Haiku.</h1>
+        </div>
+        <button id="openLogin" type="button">Open Claude Login</button>
+      </section>
+
+      <section class="panel">
+        <form id="scheduleForm" class="schedule-form">
+          <label for="scheduleAt">Run time</label>
+          <div class="form-row">
+            <input id="scheduleAt" name="scheduleAt" type="datetime-local" required>
+            <button type="submit">Schedule</button>
+            <button id="runNow" type="button" class="secondary">Run Now</button>
+          </div>
+        </form>
+        <p id="status" class="status">Ready.</p>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>Schedules</h2>
+          <div id="schedules" class="list"></div>
+        </div>
+        <div class="panel">
+          <h2>Run Log</h2>
+          <div id="logs" class="list"></div>
+        </div>
+      </section>
+    </main>
+    <script src="renderer.js"></script>
+  </body>
+</html>
