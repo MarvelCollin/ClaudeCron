@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const readline = require('readline');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
@@ -30,6 +31,28 @@ requireBool(config.runWhenLocked, 'runWhenLocked');
 if (!Array.isArray(config.schedules) || config.schedules.length === 0) throw new Error('schedules is required.');
 
 const logPath = path.isAbsolute(logFile) ? logFile : path.join(root, logFile);
+const configHash = crypto.createHash('sha256').update(fs.readFileSync(configPath)).digest('hex');
+
+function statePath() {
+  if (isWindows) {
+    const base = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(base, 'ClaudeCron', 'state.json');
+  }
+  if (isMac) return path.join(os.homedir(), 'Library', 'Application Support', 'ClaudeCron', 'state.json');
+  return path.join(os.homedir(), '.claudecron-state.json');
+}
+
+function readState() {
+  const file = statePath();
+  if (!fs.existsSync(file)) return {};
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function writeState() {
+  const file = statePath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ configHash }, null, 2), 'utf8');
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -245,6 +268,20 @@ function install() {
   ensureSupported();
   if (isWindows) windowsInstall();
   else macInstall();
+  writeState();
+}
+
+function isInstalled() {
+  ensureSupported();
+  if (isWindows) return windowsTaskExists();
+  return fs.existsSync(macPlistPath());
+}
+
+function syncInstalledTask() {
+  if (!isInstalled()) return;
+  if (readState().configHash === configHash) return;
+  console.log('Updating background task from claudecron.config.json...');
+  install();
 }
 
 function runNow() {
@@ -346,7 +383,10 @@ async function interactive() {
 async function main() {
   const command = process.argv[2];
   if (command) execute(command);
-  else await interactive();
+  else {
+    syncInstalledTask();
+    await interactive();
+  }
 }
 
 main().catch(err => {
