@@ -6,13 +6,14 @@ $root = Split-Path -Parent $PSScriptRoot
 $config = Get-Content -Raw $ConfigPath | ConvertFrom-Json
 $prompt = [string]$config.prompt
 if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'prompt is required.' }
+$model = [string]$config.model
+if ($model -ne 'haiku') { throw 'model must be haiku.' }
 $logFile = [string]$config.logFile
 if ([string]::IsNullOrWhiteSpace($logFile)) { throw 'logFile is required.' }
 $logPath = if ([System.IO.Path]::IsPathRooted($logFile)) { $logFile } else { Join-Path $root $logFile }
 $logDir = Split-Path -Parent $logPath
 $claude = Get-Command claude -ErrorAction Stop
-$argsList = @('-p', $prompt)
-if ($config.model) { $argsList += @('--model', [string]$config.model) }
+$argsList = @('-p', $prompt, '--model', $model)
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Set-Location $root

@@ -40,10 +40,10 @@ if ([string]::IsNullOrWhiteSpace($user)) { $user = "$env:USERDOMAIN\$env:USERNAM
 if ($config.runWhenLocked) {
   $password = Read-Host "Windows password for $user" -AsSecureString
   $credential = [System.Management.Automation.PSCredential]::new($user, $password)
-  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggers -Settings $settings -User $credential.UserName -Password $credential.GetNetworkCredential().Password -RunLevel LeastPrivilege -Force | Out-Null
+  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggers -Settings $settings -User $credential.UserName -Password $credential.GetNetworkCredential().Password -RunLevel Limited -Force -ErrorAction Stop | Out-Null
 } else {
-  $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel LeastPrivilege
-  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggers -Settings $settings -Principal $principal -Force | Out-Null
+  $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggers -Settings $settings -Principal $principal -Force -ErrorAction Stop | Out-Null
 }
 
 Write-Output "Installed task $taskName"

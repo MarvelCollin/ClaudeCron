@@ -1,6 +1,7 @@
 {
   "taskName": "ClaudeCron",
   "prompt": "hi",
+  "model": "haiku",
   "logFile": "claude-run.log",
   "wakeToRun": true,
   "runWhenLocked": true,
