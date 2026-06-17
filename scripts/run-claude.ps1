@@ -18,8 +18,9 @@ $argsList = @('-p', $prompt, '--model', $model)
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Set-Location $root
 Add-Content -Path $logPath -Value ("[{0}] start" -f (Get-Date -Format o))
-& $claude.Source @argsList >> $logPath 2>&1
+$output = & $claude.Source @argsList 2>&1
 $exitCode = $LASTEXITCODE
 if ($null -eq $exitCode) { $exitCode = 1 }
+if ($output) { $output | Out-File -FilePath $logPath -Append -Encoding utf8 }
 Add-Content -Path $logPath -Value ("[{0}] exit {1}" -f (Get-Date -Format o), $exitCode)
 exit $exitCode

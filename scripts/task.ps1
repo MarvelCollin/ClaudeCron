@@ -31,10 +31,10 @@ function Show-TaskStatus {
   $successCount = 0
   $failedCount = 0
   if (Test-Path $logPath) {
-    $logLines = Get-Content $logPath
-    $runCount = @($logLines | Select-String '^\[.+\] start$').Count
-    $successCount = @($logLines | Select-String '^\[.+\] exit 0$').Count
-    $failedCount = @($logLines | Select-String '^\[.+\] exit (?!0$)\d+$').Count
+    $logText = (Get-Content -Raw $logPath) -replace "`0", ''
+    $runCount = [regex]::Matches($logText, '(?m)^\[.+\] start\r?$').Count
+    $successCount = [regex]::Matches($logText, '(?m)^\[.+\] exit 0\r?$').Count
+    $failedCount = [regex]::Matches($logText, '(?m)^\[.+\] exit (?!0\r?$)\d+\r?$').Count
   }
   Write-Output ''
   Write-Output "Installed: Yes"
@@ -46,6 +46,7 @@ function Show-TaskStatus {
   Write-Output "Run count: $runCount"
   Write-Output "Success count: $successCount"
   Write-Output "Failed count: $failedCount"
+  Write-Output "Incomplete count: $($runCount - $successCount - $failedCount)"
   Write-Output "Log: $logPath"
 }
 
