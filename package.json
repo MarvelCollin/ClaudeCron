@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Command-line Claude automation for scheduled runs.",
   "scripts": {
-    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-claude.ps1",
+    "start": "node scripts/run-claude.js",
     "login": "claude auth",
-    "task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/task.ps1",
-    "install-task": "powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1",
-    "check": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$config = Get-Content -Raw claudecron.config.json | ConvertFrom-Json; if ($config.model -ne 'haiku') { throw 'model must be haiku.' }; $null = [scriptblock]::Create((Get-Content -Raw scripts\\install-task.ps1)); $null = [scriptblock]::Create((Get-Content -Raw scripts\\run-claude.ps1)); $null = [scriptblock]::Create((Get-Content -Raw scripts\\task.ps1)); Write-Output 'check ok'\""
+    "task": "node scripts/task.js",
+    "install-task": "node scripts/task.js install",
+    "check": "node scripts/check.js"
   }
 }

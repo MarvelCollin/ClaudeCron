@@ -1,21 +1,50 @@
 # ClaudeCron
 
-Command-line tool untuk membuka Claude.ai dan mengirim pesan `hi`.
+Command-line scheduler for running Claude CLI prompts in the background.
 
-## Run
+## Setup
 
 ```bash
 npm install
 npm run login
-npm start
 ```
 
-Gunakan `npm run login` sekali untuk login Claude di profile browser khusus tool ini. Untuk Task Scheduler Claude CLI, edit `claudecron.config.json`.
+Run `npm run login` once so Claude CLI is authenticated.
 
-## Task Scheduler
+## Manage Schedule
 
 ```cmd
-npm run install-task
+npm run task
 ```
 
-Pastikan `claude -p "hi"` sudah jalan di PowerShell sebelum install task. Task ini membaca `claudecron.config.json`, menjalankan `claude -p`, hidden, wake dari sleep jika wake timer Windows aktif, dan tetap berjalan saat PC terkunci. Jadwal di config sekarang mengikuti Rabu-Kamis 08:30/13:30/18:30/23:30 WIB dan Jumat-Selasa 04:30/09:30/14:30/19:30 WIB.
+Choose `1` to install or update the background schedule. Choose `6` to check whether it is installed, enabled, currently running, the next run time, and how many runs succeeded or failed.
+
+## Config Tutorial
+
+Edit `claudecron.config.json`.
+
+```json
+{
+  "taskName": "ClaudeCron",
+  "macLabel": "com.claudecron",
+  "prompt": "hi",
+  "model": "haiku",
+  "logFile": "claude-run.log",
+  "wakeToRun": true,
+  "runWhenLocked": true,
+  "schedules": [
+    {
+      "days": ["Wednesday", "Thursday"],
+      "times": ["08:30", "13:30", "18:30", "23:30"]
+    },
+    {
+      "days": ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
+      "times": ["04:30", "09:30", "14:30", "19:30"]
+    }
+  ]
+}
+```
+
+Use English day names: `Monday`, `Tuesday`, `Wednesday`, `Thursday`, `Friday`, `Saturday`, `Sunday`. Use 24-hour `HH:mm` times. Add another schedule block when different days need different times. Keep `"model": "haiku"` because the runner enforces Haiku only.
+
+After changing the config, run `npm run task` and choose `1` again so Windows Task Scheduler or macOS launchd is updated.
