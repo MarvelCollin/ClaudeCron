@@ -2,13 +2,10 @@
   "name": "claude-cron",
   "version": "1.0.0",
   "description": "Command-line Claude automation for scheduled runs.",
-  "main": "src/cli.js",
   "scripts": {
-    "start": "node src/cli.js run",
-    "login": "node src/cli.js login",
-    "check": "node --check src/cli.js && node --check src/automation.js"
-  },
-  "dependencies": {
-    "playwright-core": "^1.53.0"
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-claude.ps1",
+    "login": "claude auth",
+    "install-task": "powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1",
+    "check": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$null = Get-Content -Raw claudecron.config.json | ConvertFrom-Json; $null = [scriptblock]::Create((Get-Content -Raw scripts\\install-task.ps1)); $null = [scriptblock]::Create((Get-Content -Raw scripts\\run-claude.ps1)); Write-Output 'check ok'\""
   }
 }
