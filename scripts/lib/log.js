@@ -15,7 +15,17 @@ function logCounts(file) {
   return { runs, success, failed, incomplete: runs - success - failed };
 }
 
+function lastRunTime(file) {
+  if (!fs.existsSync(file)) return '-';
+  const text = fs.readFileSync(file, 'utf8').replace(/\0/g, '');
+  const matches = [...text.matchAll(/^\[(.+)\] start\r?$/gm)];
+  if (matches.length === 0) return '-';
+  const date = new Date(matches[matches.length - 1][1]);
+  return Number.isNaN(date.getTime()) ? matches[matches.length - 1][1] : date.toLocaleString();
+}
+
 module.exports = {
   appendLog,
   logCounts,
+  lastRunTime,
 };

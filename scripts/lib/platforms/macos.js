@@ -4,8 +4,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { root } = require('../paths');
 const { run, runInherited } = require('../process');
-const { logCounts } = require('../log');
-const { splitTime } = require('../config');
+const { logCounts, lastRunTime } = require('../log');
+const { splitTime, nextRunTime } = require('../config');
 
 function domain() {
   return `gui/${process.getuid()}`;
@@ -120,6 +120,8 @@ function status(context) {
   console.log(`Installed: ${installed ? 'Yes' : 'No'}`);
   console.log(`Loaded: ${isLoaded}`);
   console.log(`Current state: ${state}`);
+  console.log(`Last run: ${lastRunTime(context.logPath)}`);
+  console.log(`Next run: ${nextRunTime(context.config)}`);
   console.log(`Run count: ${counts.runs}`);
   console.log(`Success count: ${counts.success}`);
   console.log(`Failed count: ${counts.failed}`);

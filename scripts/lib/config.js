@@ -62,10 +62,33 @@ function splitTime(value) {
   return { hour: Number(match[1]), minute: Number(match[2]) };
 }
 
+function nextRunTime(config, now = new Date()) {
+  const dayIndexes = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  let next = null;
+  for (const schedule of config.schedules) {
+    for (const day of schedule.days) {
+      for (const time of schedule.times) {
+        const parts = splitTime(time);
+        for (let offset = 0; offset <= 7; offset++) {
+          const candidate = new Date(now);
+          candidate.setDate(now.getDate() + offset);
+          candidate.setHours(parts.hour, parts.minute, 0, 0);
+          if (candidate.getDay() !== dayIndexes[day]) continue;
+          if (candidate <= now) continue;
+          if (!next || candidate < next) next = candidate;
+          break;
+        }
+      }
+    }
+  }
+  return next ? next.toLocaleString() : '-';
+}
+
 module.exports = {
   dayNames,
   loadConfig,
   validateConfig,
   calendarEntryCount,
   splitTime,
+  nextRunTime,
 };
