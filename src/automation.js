@@ -1,112 +1,93 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { execSync } = require('child_process');
 const { chromium } = require('playwright-core');
 
 const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
 
-const KNOWN_BROWSERS = {
-  Chrome: path.join(local, 'Google', 'Chrome', 'User Data'),
-  Edge: path.join(local, 'Microsoft', 'Edge', 'User Data'),
-  Brave: path.join(local, 'BraveSoftware', 'Brave-Browser', 'User Data'),
+const KNOWN_EXE_PATHS = {
+  Chrome: [
+    path.join(local, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(process.env.PROGRAMFILES || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+  ],
+  Edge: [
+    path.join(local, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    path.join(process.env.PROGRAMFILES || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+  ],
+  Brave: [
+    path.join(local, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'),
+    path.join(process.env.PROGRAMFILES || '', 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'),
+  ],
 };
 
-function regQuery(keyPath, valueName) {
+function findExe(name) {
+  for (const p of (KNOWN_EXE_PATHS[name] || [])) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function detectDefault() {
   try {
-    const args = valueName ? `/v ${valueName}` : '/ve';
-    const out = execSync(`reg query "${keyPath}" ${args}`, {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    return out;
-  } catch {
-    return null;
-  }
-}
-
-function defaultProgId() {
-  const key = String.raw`HKEY_CURRENT_USER\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice`;
-  const out = regQuery(key, 'ProgId');
-  if (!out) return null;
-  const m = out.match(/ProgId\s+REG_SZ\s+(\S+)/);
-  return m ? m[1] : null;
-}
-
-function exeFromProgId(progId) {
-  const key = `HKEY_CLASSES_ROOT\\${progId}\\shell\\open\\command`;
-  const out = regQuery(key);
-  if (!out) return null;
-  const m = out.match(/"([^"]+\.exe)"/i);
-  return m && fs.existsSync(m[1]) ? m[1] : null;
-}
-
-function nameFromProgId(progId) {
-  if (!progId) return null;
-  const id = progId.toLowerCase();
-  if (id.startsWith('msedge')) return 'Edge';
-  if (id.startsWith('chrome')) return 'Chrome';
-  if (id.startsWith('brave')) return 'Brave';
+    const key = String.raw`HKEY_CURRENT_USER\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice`;
+    const out = execSync(`reg query "${key}" /v ProgId`, { encoding: 'utf8', windowsHide: true });
+    const m = out.match(/ProgId\s+REG_SZ\s+(\S+)/);
+    if (!m) return null;
+    const id = m[1].toLowerCase();
+    if (id.startsWith('msedge')) return 'Edge';
+    if (id.startsWith('chrome')) return 'Chrome';
+    if (id.startsWith('brave')) return 'Brave';
+  } catch {}
   return null;
 }
 
-function detectBrowser() {
-  const progId = defaultProgId();
-  const name = nameFromProgId(progId);
-  const exe = progId ? exeFromProgId(progId) : null;
-  const profile = name ? KNOWN_BROWSERS[name] : null;
-  if (exe && name && profile) return { name, exe, profile };
-  return null;
+function listBrowsers() {
+  return Object.keys(KNOWN_EXE_PATHS).filter(name => findExe(name));
 }
 
-function readDebugPort(profileDir) {
-  try {
-    const raw = fs.readFileSync(path.join(profileDir, 'DevToolsActivePort'), 'utf8').trim();
-    const port = parseInt(raw.split('\n')[0], 10);
-    return port > 0 ? port : null;
-  } catch {
-    return null;
-  }
+function resolveBrowser(browserName) {
+  const name = (browserName && browserName !== 'Default') ? browserName : detectDefault();
+  if (!name) throw new Error('No supported browser found. Set Chrome, Edge, or Brave as default.');
+  const exe = findExe(name);
+  if (!exe) throw new Error(name + ' is not installed.');
+  return { name, exe };
 }
 
-async function waitForDebugPort(profileDir, timeoutMs = 15_000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const port = readDebugPort(profileDir);
-    if (port) return port;
-    await new Promise(r => setTimeout(r, 300));
-  }
-  return null;
+let profileDir = null;
+let activeContext = null;
+let activeExe = null;
+
+function setProfileDir(dir) {
+  profileDir = dir;
+  fs.mkdirSync(dir, { recursive: true });
 }
 
-function launchWithDebug(browser) {
-  const portFile = path.join(browser.profile, 'DevToolsActivePort');
-  try { fs.unlinkSync(portFile); } catch {}
-  const child = spawn(browser.exe, [
-    '--remote-debugging-port=0',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--user-data-dir=' + browser.profile,
-  ], { detached: true, stdio: 'ignore' });
-  child.unref();
-}
-
-async function getConnection(browser) {
-  let port = readDebugPort(browser.profile);
-  if (port) {
+async function ensureContext(exe) {
+  if (activeContext) {
     try {
-      return await chromium.connectOverCDP('http://127.0.0.1:' + port);
+      if (activeExe === exe) {
+        activeContext.pages();
+        return activeContext;
+      }
+      await activeContext.close().catch(() => {});
     } catch {}
+    activeContext = null;
+    activeExe = null;
   }
-
-  launchWithDebug(browser);
-  port = await waitForDebugPort(browser.profile);
-  if (!port) {
-    throw new Error(
-      browser.name + ' is already running. Close it first so ClaudeCron can connect, then it will retry automatically.'
-    );
-  }
-  return chromium.connectOverCDP('http://127.0.0.1:' + port);
+  activeContext = await chromium.launchPersistentContext(profileDir, {
+    headless: false,
+    executablePath: exe,
+    args: ['--no-first-run', '--no-default-browser-check'],
+    viewport: null,
+  });
+  activeExe = exe;
+  activeContext.on('close', () => {
+    activeContext = null;
+    activeExe = null;
+  });
+  return activeContext;
 }
 
 async function visible(locator, timeout = 1500) {
@@ -116,18 +97,45 @@ async function visible(locator, timeout = 1500) {
 async function selectModel(page, model) {
   const name = model || 'Haiku';
   const pattern = new RegExp(name, 'i');
-  if (await visible(page.getByText(pattern).first())) return;
-  const selector = page.locator('button').filter({ hasText: /Claude|Sonnet|Opus|Haiku|model/i }).first();
-  if (await visible(selector, 5000)) {
-    await selector.click();
+
+  await page.waitForTimeout(2500);
+
+  if (await visible(page.getByText(pattern).first(), 3000)) return;
+
+  const openers = [
+    page.locator('button').filter({ hasText: /Sonnet|Opus|Haiku|Fable/i }).first(),
+    page.locator('[role="button"]').filter({ hasText: /Sonnet|Opus|Haiku|Fable/i }).first(),
+    page.locator('button').filter({ hasText: /model/i }).first(),
+    page.locator('[data-testid*="model"]').first(),
+  ];
+
+  for (const opener of openers) {
+    if (!(await visible(opener, 2000))) continue;
+    await opener.click();
+    await page.waitForTimeout(600);
+
     const target = page.getByText(pattern).first();
-    if (await visible(target, 8000)) {
+    if (await visible(target, 4000)) {
       await target.click();
       await page.waitForTimeout(700);
       return;
     }
+
+    const more = page.getByText(/more model/i).first();
+    if (await visible(more, 1500)) {
+      await more.click();
+      await page.waitForTimeout(500);
+      const target2 = page.getByText(pattern).first();
+      if (await visible(target2, 4000)) {
+        await target2.click();
+        await page.waitForTimeout(700);
+        return;
+      }
+    }
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
   }
-  throw new Error('Model ' + name + ' not found. Make sure you are logged in and have access.');
 }
 
 async function findComposer(page) {
@@ -139,7 +147,7 @@ async function findComposer(page) {
   for (const candidate of candidates) {
     if (await visible(candidate, 7000)) return candidate;
   }
-  throw new Error('Composer not found. Log into claude.ai in your browser first.');
+  return null;
 }
 
 async function writeMessage(composer, message) {
@@ -160,26 +168,47 @@ async function sendMessage(page) {
   await page.keyboard.press('Enter');
 }
 
-async function runClaudeMessage({ message, model }) {
-  const detected = detectBrowser();
-  if (!detected) {
-    throw new Error('No supported default browser found. Set Chrome, Edge, or Brave as your default browser.');
-  }
+async function openClaudeLogin(browserName) {
+  const { exe } = resolveBrowser(browserName);
+  const context = await ensureContext(exe);
+  const page = context.pages()[0] || await context.newPage();
+  await page.goto('https://claude.ai', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+}
 
-  const browser = await getConnection(detected);
-  const context = browser.contexts()[0];
+async function runClaudeMessage({ message, model, browserName }) {
+  const { exe } = resolveBrowser(browserName);
+  const context = await ensureContext(exe);
   const page = await context.newPage();
+  let keepOpen = false;
   try {
     await page.goto('https://claude.ai/new', { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await selectModel(page, model);
     const composer = await findComposer(page);
+    if (!composer) {
+      keepOpen = true;
+      throw new Error('Not logged in. Run "npm run login" first, then try again.');
+    }
     await writeMessage(composer, message);
     await sendMessage(page);
     await page.waitForTimeout(5000);
   } finally {
-    await page.close().catch(() => {});
-    browser.disconnect();
+    if (!keepOpen) {
+      for (const p of context.pages()) {
+        await p.close().catch(() => {});
+      }
+    }
   }
 }
 
-module.exports = { detectBrowser, runClaudeMessage };
+async function closeAutomation() {
+  if (!activeContext) return;
+  const context = activeContext;
+  activeContext = null;
+  activeExe = null;
+  await context.close();
+}
+
+module.exports = {
+  setProfileDir, detectDefault, listBrowsers,
+  openClaudeLogin, runClaudeMessage, closeAutomation,
+};

@@ -1,12 +1,13 @@
 # ClaudeCron
 
-Electron app untuk schedule Brave membuka Claude.ai, memilih Haiku, dan mengirim pesan `hi`.
+Command-line tool untuk membuka Claude.ai dan mengirim pesan `hi`.
 
 ## Run
 
 ```bash
 npm install
+npm run login
 npm start
 ```
 
-Gunakan `Open Claude Login` sekali untuk login Claude di profile Brave khusus app ini. Schedule memakai Windows Task Scheduler dan bisa wake dari sleep/hibernate, bukan dari shutdown total tanpa BIOS RTC/Wake-on-LAN.
+Gunakan `npm run login` sekali untuk login Claude di profile browser khusus tool ini. Jadwalkan `npm start` dari Command Prompt, Task Scheduler, atau cron lain.

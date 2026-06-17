@@ -1,16 +1,14 @@
 {
   "name": "claude-cron",
   "version": "1.0.0",
-  "description": "Electron scheduler for Claude automation in Brave.",
-  "main": "src/main.js",
+  "description": "Command-line Claude automation for scheduled runs.",
+  "main": "src/cli.js",
   "scripts": {
-    "start": "electron .",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/automation.js && node --check src/engine.js && node --check src/store.js"
+    "start": "node src/cli.js run",
+    "login": "node src/cli.js login",
+    "check": "node --check src/cli.js && node --check src/automation.js"
   },
   "dependencies": {
     "playwright-core": "^1.53.0"
-  },
-  "devDependencies": {
-    "electron": "^42.4.0"
   }
 }
