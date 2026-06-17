@@ -1,55 +1,35 @@
-const fs = require('fs');
-const path = require('path');
 const { spawnSync } = require('child_process');
-
-const root = path.resolve(__dirname, '..');
+const { root } = require('./lib/paths');
+const { loadConfig } = require('./lib/config');
+const { appendLog } = require('./lib/log');
+const { resolveClaudeCommand } = require('./lib/claude');
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : null;
 }
 
-function loadConfig() {
-  const configPath = path.resolve(argValue('--config') || path.join(root, 'claudecron.config.json'));
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!config.prompt || typeof config.prompt !== 'string') throw new Error('prompt is required.');
-  if (config.model !== 'haiku') throw new Error('model must be haiku.');
-  if (!config.logFile || typeof config.logFile !== 'string') throw new Error('logFile is required.');
-  return { config, configPath };
-}
-
-function logPathFor(config) {
-  return path.isAbsolute(config.logFile) ? config.logFile : path.join(root, config.logFile);
-}
-
-function appendLog(file, text) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.appendFileSync(file, text, 'utf8');
-}
-
-function resolveClaudeCommand() {
-  if (process.platform !== 'win32') return 'claude';
-  const result = spawnSync('where.exe', ['claude'], { encoding: 'utf8' });
-  if (result.status !== 0) throw new Error('claude command was not found.');
-  const commands = result.stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  return commands.find(command => command.toLowerCase().endsWith('.cmd')) || commands[0];
-}
-
 function main() {
-  const { config } = loadConfig();
-  const logPath = logPathFor(config);
-  appendLog(logPath, `[${new Date().toISOString()}] start\n`);
-  const result = spawnSync(resolveClaudeCommand(), ['-p', config.prompt, '--model', config.model], {
-    cwd: root,
-    encoding: 'utf8',
-    shell: false,
-  });
-  if (result.error) throw result.error;
-  if (result.stdout) appendLog(logPath, result.stdout);
-  if (result.stderr) appendLog(logPath, result.stderr);
-  const exitCode = typeof result.status === 'number' ? result.status : 1;
-  appendLog(logPath, `[${new Date().toISOString()}] exit ${exitCode}\n`);
-  process.exitCode = exitCode;
+  const context = loadConfig(argValue('--config') || undefined);
+  let exitCode = 1;
+  appendLog(context.logPath, `[${new Date().toISOString()}] start\n`);
+  try {
+    const result = spawnSync(resolveClaudeCommand(), ['-p', context.config.prompt, '--model', context.config.model], {
+      cwd: root,
+      encoding: 'utf8',
+      shell: false,
+    });
+    if (result.error) throw result.error;
+    if (result.stdout) appendLog(context.logPath, result.stdout);
+    if (result.stderr) appendLog(context.logPath, result.stderr);
+    exitCode = typeof result.status === 'number' ? result.status : 1;
+  } catch (err) {
+    appendLog(context.logPath, `${err.message}\n`);
+    console.error(err.message);
+  } finally {
+    appendLog(context.logPath, `[${new Date().toISOString()}] exit ${exitCode}\n`);
+    process.exitCode = exitCode;
+  }
 }
 
 try {
