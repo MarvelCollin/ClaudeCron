@@ -31,26 +31,45 @@ function parseSchtasks(output, label) {
 }
 
 function status(context) {
-  if (!exists(context)) {
+  const info = summary(context);
+  if (!info.installed) {
     console.log('Task is not installed.');
     return;
   }
-  const output = run('schtasks.exe', ['/Query', '/TN', context.config.taskName, '/V', '/FO', 'LIST']);
-  const counts = logCounts(context.logPath);
   console.log('');
   console.log('Installed: Yes');
-  console.log(`Enabled: ${parseSchtasks(output, 'Scheduled Task State') === 'Enabled'}`);
-  console.log(`Current state: ${parseSchtasks(output, 'Status')}`);
-  console.log(`Last run: ${parseSchtasks(output, 'Last Run Time')}`);
-  console.log(`Next run: ${parseSchtasks(output, 'Next Run Time')}`);
+  console.log(`Enabled: ${info.enabled}`);
+  console.log(`Current state: ${info.state}`);
+  console.log(`Last run: ${info.lastRun}`);
+  console.log(`Next run: ${info.nextRun}`);
   console.log(`Config next run: ${nextRunTime(context.config)}`);
   console.log(`Configured schedule: ${scheduleSummary(context.config)}`);
-  console.log(`Last result: ${parseSchtasks(output, 'Last Result')}`);
-  console.log(`Run count: ${counts.runs}`);
-  console.log(`Success count: ${counts.success}`);
-  console.log(`Failed count: ${counts.failed}`);
-  console.log(`Incomplete count: ${counts.incomplete}`);
+  console.log(`Last result: ${info.lastResult}`);
+  console.log(`Run count: ${info.counts.runs}`);
+  console.log(`Success count: ${info.counts.success}`);
+  console.log(`Failed count: ${info.counts.failed}`);
+  console.log(`Incomplete count: ${info.counts.incomplete}`);
   console.log(`Log: ${context.logPath}`);
+}
+
+function summary(context) {
+  const counts = logCounts(context.logPath);
+  if (!exists(context)) {
+    return { installed: false, enabled: false, running: false, state: 'Not installed', lastRun: '-', nextRun: '-', lastResult: '-', counts };
+  }
+  const output = run('schtasks.exe', ['/Query', '/TN', context.config.taskName, '/V', '/FO', 'LIST']);
+  const state = parseSchtasks(output, 'Status');
+  const enabled = parseSchtasks(output, 'Scheduled Task State') === 'Enabled';
+  return {
+    installed: true,
+    enabled,
+    running: state === 'Running',
+    state,
+    lastRun: parseSchtasks(output, 'Last Run Time'),
+    nextRun: enabled ? parseSchtasks(output, 'Next Run Time') : '-',
+    lastResult: parseSchtasks(output, 'Last Result'),
+    counts,
+  };
 }
 
 function runNow(context) {
@@ -86,6 +105,7 @@ module.exports = {
   name: 'windows',
   exists,
   install,
+  summary,
   status,
   runNow,
   stop,

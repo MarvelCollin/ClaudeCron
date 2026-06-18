@@ -34,29 +34,49 @@ function openLog() {
   platform.openLog(context);
 }
 
+function runBackground() {
+  syncInstalledTask();
+  if (!platform.exists(context)) install();
+  platform.enable(context);
+}
+
+function stopBackground() {
+  const info = platform.summary(context);
+  if (!info.installed) {
+    console.log('Task is not installed.');
+    return;
+  }
+  if (info.running) platform.stop(context);
+  platform.disable(context);
+}
+
 function showMenu() {
+  const info = platform.summary(context);
   console.log('');
   console.log(`ClaudeCron task: ${platform.name === 'macos' ? context.config.macLabel : context.config.taskName}`);
-  console.log('1. Install or update background task');
-  console.log('2. Run once now');
-  console.log('3. Stop current run');
-  console.log('4. Disable scheduled runs');
-  console.log('5. Enable scheduled runs');
-  console.log('6. Show status');
-  console.log('7. Open log');
-  console.log('8. Delete task');
+  console.log(`Background: ${info.enabled ? 'On' : 'Off'}`);
+  console.log(`Current run: ${info.running ? 'Running' : 'Not running'}`);
+  console.log(`Last run: ${info.lastRun}`);
+  console.log(`Next run: ${info.nextRun}`);
+  console.log(`Runs: ${info.counts.runs} total, ${info.counts.success} success, ${info.counts.failed} failed, ${info.counts.incomplete} incomplete`);
+  console.log('');
+  console.log('1. Run Background');
+  console.log('2. Stop Background');
+  console.log('3. Run once now');
+  console.log('4. Open log');
   console.log('0. Exit');
 }
 
 function execute(choice) {
-  if (choice === 'install' || choice === '1') install();
-  else if (choice === 'run' || choice === '2') platform.runNow(context);
-  else if (choice === 'stop' || choice === '3') platform.stop(context);
-  else if (choice === 'disable' || choice === '4') platform.disable(context);
-  else if (choice === 'enable' || choice === '5') platform.enable(context);
-  else if (choice === 'status' || choice === '6') platform.status(context);
-  else if (choice === 'log' || choice === '7') openLog();
-  else if (choice === 'delete' || choice === '8') platform.deleteTask(context);
+  if (choice === 'install') install();
+  else if (choice === 'background' || choice === 'start' || choice === '1') runBackground();
+  else if (choice === 'stop-background' || choice === 'disable' || choice === '2') stopBackground();
+  else if (choice === 'run' || choice === '3') platform.runNow(context);
+  else if (choice === 'log' || choice === '4') openLog();
+  else if (choice === 'stop') platform.stop(context);
+  else if (choice === 'enable') platform.enable(context);
+  else if (choice === 'status') platform.status(context);
+  else if (choice === 'delete') platform.deleteTask(context);
   else if (choice !== '0') console.log('Invalid choice.');
 }
 

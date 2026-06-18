@@ -24,6 +24,13 @@ function loaded(context) {
   return result.status === 0;
 }
 
+function disabled(context) {
+  const output = run('launchctl', ['print-disabled', domain()]);
+  const label = context.config.macLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = output.match(new RegExp(`"${label}"\\s*=>\\s*(true|false)`));
+  return match ? match[1] === 'true' : false;
+}
+
 function xmlEscape(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -107,8 +114,27 @@ function install(context) {
 }
 
 function status(context) {
+  const info = summary(context);
+  console.log('');
+  console.log(`Installed: ${info.installed ? 'Yes' : 'No'}`);
+  console.log(`Loaded: ${info.loaded}`);
+  console.log(`Enabled: ${info.enabled}`);
+  console.log(`Current state: ${info.state}`);
+  console.log(`Last run: ${info.lastRun}`);
+  console.log(`Next run: ${info.nextRun}`);
+  console.log(`Configured schedule: ${scheduleSummary(context.config)}`);
+  console.log(`Run count: ${info.counts.runs}`);
+  console.log(`Success count: ${info.counts.success}`);
+  console.log(`Failed count: ${info.counts.failed}`);
+  console.log(`Incomplete count: ${info.counts.incomplete}`);
+  console.log(`Log: ${context.logPath}`);
+  if (info.installed) console.log(`Plist: ${plistPath(context)}`);
+}
+
+function summary(context) {
   const installed = exists(context);
   const isLoaded = loaded(context);
+  const isDisabled = installed ? disabled(context) : true;
   const counts = logCounts(context.logPath);
   let state = 'Not loaded';
   if (isLoaded) {
@@ -116,19 +142,16 @@ function status(context) {
     const match = output.match(/state = ([^\n]+)/);
     state = match ? match[1].trim() : 'Loaded';
   }
-  console.log('');
-  console.log(`Installed: ${installed ? 'Yes' : 'No'}`);
-  console.log(`Loaded: ${isLoaded}`);
-  console.log(`Current state: ${state}`);
-  console.log(`Last run: ${lastRunTime(context.logPath)}`);
-  console.log(`Next run: ${nextRunTime(context.config)}`);
-  console.log(`Configured schedule: ${scheduleSummary(context.config)}`);
-  console.log(`Run count: ${counts.runs}`);
-  console.log(`Success count: ${counts.success}`);
-  console.log(`Failed count: ${counts.failed}`);
-  console.log(`Incomplete count: ${counts.incomplete}`);
-  console.log(`Log: ${context.logPath}`);
-  if (installed) console.log(`Plist: ${plistPath(context)}`);
+  return {
+    installed,
+    loaded: isLoaded,
+    enabled: isLoaded && !isDisabled,
+    running: state.toLowerCase() === 'running',
+    state,
+    lastRun: lastRunTime(context.logPath),
+    nextRun: isLoaded && !isDisabled ? nextRunTime(context.config) : '-',
+    counts,
+  };
 }
 
 function runNow(context) {
@@ -166,6 +189,7 @@ module.exports = {
   name: 'macos',
   exists,
   install,
+  summary,
   status,
   runNow,
   stop,
