@@ -5,7 +5,7 @@ Command-line scheduler for running Claude CLI prompts in the background.
 ## Install
 
 ```bash
-npm install -g claudecron
+npm install -g @marvelcollin/claudecron
 claudecron
 ```
 
@@ -21,7 +21,7 @@ claude auth
 claudecron
 ```
 
-Use the arrow keys to choose `Run Background`, `Stop Background`, `Run once now`, or `Open log`. The menu shows whether the background schedule is on, whether a run is active, the last run time, the next run time, and run counts.
+Use the arrow keys to choose `Configure Schedule`, `Run Background`, `Stop Background`, `Run once now`, or `Open log`. The menu shows whether the background schedule is on, whether a run is active, the last run time, the next run time, and run counts.
 
 ## Config Tutorial
 
@@ -39,7 +39,9 @@ macOS:
 ~/Library/Application Support/ClaudeCron/claudecron.config.json
 ```
 
-Edit that file to change the schedule.
+Use `Configure Schedule` in the menu for the easiest setup. It accepts day shortcuts like `all`, `weekdays`, `weekend`, or `mon,wed,fri`, and comma-separated 24-hour times like `08:30,13:30,18:30`.
+
+You can also edit the config file manually.
 
 ```json
 {
@@ -65,4 +67,4 @@ Edit that file to change the schedule.
 
 Use English day names: `Monday`, `Tuesday`, `Wednesday`, `Thursday`, `Friday`, `Saturday`, `Sunday`. Use 24-hour `HH:mm` times. Add another schedule block when different days need different times. Keep `"model": "haiku"` because the runner enforces Haiku only.
 
-After changing the config, run `claudecron` and choose `Run Background` so Windows Task Scheduler or macOS launchd is updated.
+After changing the config manually, run `claudecron` and choose `Run Background` so Windows Task Scheduler or macOS launchd is updated.

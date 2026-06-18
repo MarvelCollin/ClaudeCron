@@ -1,6 +1,6 @@
 {
-  "name": "claudecron",
-  "version": "1.0.0",
+  "name": "@marvelcollin/claudecron",
+  "version": "1.0.1",
   "description": "Command-line Claude automation for scheduled runs.",
   "homepage": "https://github.com/MarvelCollin/ClaudeCron#readme",
   "bugs": {
@@ -12,6 +12,9 @@
   },
   "license": "MIT",
   "author": "Marvel Collin",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "claudecron": "bin/claudecron.js"
   },
