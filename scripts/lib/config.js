@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { defaultConfigPath, resolveFromRoot } = require('./paths');
+const { configTemplatePath, defaultConfigPath, resolveFromConfig } = require('./paths');
 
 const dayNames = new Set(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -39,8 +39,15 @@ function validateConfig(config) {
   for (const schedule of config.schedules) validateSchedule(schedule);
 }
 
-function loadConfig(configPath = defaultConfigPath) {
-  const resolvedConfigPath = path.resolve(configPath);
+function ensureDefaultConfig(file) {
+  if (fs.existsSync(file)) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.copyFileSync(configTemplatePath, file);
+}
+
+function loadConfig(configPath) {
+  const resolvedConfigPath = path.resolve(configPath || defaultConfigPath);
+  if (!configPath) ensureDefaultConfig(resolvedConfigPath);
   const raw = fs.readFileSync(resolvedConfigPath);
   const config = JSON.parse(raw.toString('utf8'));
   validateConfig(config);
@@ -48,7 +55,7 @@ function loadConfig(configPath = defaultConfigPath) {
     config,
     configPath: resolvedConfigPath,
     configHash: crypto.createHash('sha256').update(raw).digest('hex'),
-    logPath: resolveFromRoot(config.logFile),
+    logPath: resolveFromConfig(config.logFile, resolvedConfigPath),
   };
 }
 

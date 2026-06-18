@@ -58,6 +58,7 @@ const menuItems = [
   { label: 'Exit', choice: '0', code: '90' },
 ];
 
+const repoUrl = 'https://github.com/MarvelCollin/ClaudeCron';
 const titleArt = [
   "   ______  __                        __          ______                           ",
   " .' ___  |[  |                      |  ]       .' ___  |                          ",
@@ -83,8 +84,15 @@ function color(code, value) {
   return `\x1b[${code}m${value}\x1b[0m`;
 }
 
+function link(label, url) {
+  if (!process.stdout.isTTY) return label;
+  return `\x1b]8;;${url}\x1b\\${label}\x1b]8;;\x1b\\`;
+}
+
 function stripColor(value) {
-  return String(value).replace(/\x1b\[[0-9;]*m/g, '');
+  return String(value)
+    .replace(/\x1b\[[0-9;]*m/g, '')
+    .replace(/\x1b]8;;[^\x1b]*\x1b\\/g, '');
 }
 
 function padText(value, width) {
@@ -160,6 +168,10 @@ function showMenu(info, selected = 0, message = '') {
     const item = menuItems[index];
     console.log(boxRow(actionRow(item, index === selected)));
   }
+  console.log(blankRow());
+  console.log(boxRow(`${color(theme.label, 'Repository'.padEnd(12))} ${color(theme.text, link('MarvelCollin/ClaudeCron', repoUrl))}`));
+  console.log(boxRow(`${color(theme.label, 'Website'.padEnd(12))} ${color(theme.text, repoUrl)}`));
+  console.log(boxRow(`${color(theme.label, 'Made by'.padEnd(12))} ${color(theme.text, 'Marvel Collin with \u2764\uFE0F')}`));
   console.log(blankRow());
   console.log(boxLine('+', '-', '+'));
   console.log(color('2', 'Use Up/Down, Enter/Space to select, Esc/Q to close.'));

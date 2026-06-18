@@ -1,12 +1,45 @@
 {
-  "name": "claude-cron",
+  "name": "claudecron",
   "version": "1.0.0",
   "description": "Command-line Claude automation for scheduled runs.",
+  "homepage": "https://github.com/MarvelCollin/ClaudeCron#readme",
+  "bugs": {
+    "url": "https://github.com/MarvelCollin/ClaudeCron/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarvelCollin/ClaudeCron.git"
+  },
+  "license": "MIT",
+  "author": "Marvel Collin",
+  "bin": {
+    "claudecron": "bin/claudecron.js"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "claudecron.config.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cron",
+    "scheduler",
+    "task-scheduler",
+    "launchd",
+    "automation"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node scripts/run-claude.js",
     "login": "claude auth",
     "task": "node scripts/task.js",
     "install-task": "node scripts/task.js install",
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "prepublishOnly": "npm run check"
   }
 }

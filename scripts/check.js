@@ -1,7 +1,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { root } = require('./lib/paths');
+const { configTemplatePath, root } = require('./lib/paths');
 const { loadConfig, calendarEntryCount } = require('./lib/config');
 
 function checkNode(file) {
@@ -23,7 +23,8 @@ function checkPowerShell() {
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'PowerShell parse failed.');
 }
 
-const context = loadConfig();
+const context = loadConfig(configTemplatePath);
 for (const file of jsFiles(path.join(root, 'scripts'))) checkNode(file);
+for (const file of jsFiles(path.join(root, 'bin'))) checkNode(file);
 if (process.platform === 'win32') checkPowerShell();
 console.log(`check ok: ${calendarEntryCount(context.config)} mac calendar entries`);
