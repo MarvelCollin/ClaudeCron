@@ -2,7 +2,7 @@ const { spawnSync } = require('child_process');
 const { root } = require('./lib/paths');
 const { loadConfig } = require('./lib/config');
 const { appendLog } = require('./lib/log');
-const { resolveClaudeCommand } = require('./lib/claude');
+const { claudeCommand } = require('./lib/claude');
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
@@ -14,7 +14,8 @@ function main() {
   let exitCode = 1;
   appendLog(context.logPath, `[${new Date().toISOString()}] start\n`);
   try {
-    const result = spawnSync(resolveClaudeCommand(), ['-p', context.config.prompt, '--model', context.config.model], {
+    const invocation = claudeCommand(context.config.prompt, context.config.model);
+    const result = spawnSync(invocation.command, invocation.args, {
       cwd: root,
       encoding: 'utf8',
       shell: false,
