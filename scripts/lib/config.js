@@ -84,6 +84,12 @@ function nextRunTime(config, now = new Date()) {
   return next ? next.toLocaleString() : '-';
 }
 
+function scheduleSummary(config) {
+  return config.schedules
+    .map(schedule => `${schedule.days.join(', ')} at ${schedule.times.join(', ')}`)
+    .join(' | ');
+}
+
 module.exports = {
   dayNames,
   loadConfig,
@@ -91,4 +97,5 @@ module.exports = {
   calendarEntryCount,
   splitTime,
   nextRunTime,
+  scheduleSummary,
 };

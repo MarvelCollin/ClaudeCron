@@ -2,6 +2,7 @@ const { spawnSync } = require('child_process');
 const { fromRoot } = require('../paths');
 const { run, runInherited } = require('../process');
 const { logCounts } = require('../log');
+const { nextRunTime, scheduleSummary } = require('../config');
 
 function exists(context) {
   const result = spawnSync('schtasks.exe', ['/Query', '/TN', context.config.taskName], { encoding: 'utf8' });
@@ -42,6 +43,8 @@ function status(context) {
   console.log(`Current state: ${parseSchtasks(output, 'Status')}`);
   console.log(`Last run: ${parseSchtasks(output, 'Last Run Time')}`);
   console.log(`Next run: ${parseSchtasks(output, 'Next Run Time')}`);
+  console.log(`Config next run: ${nextRunTime(context.config)}`);
+  console.log(`Configured schedule: ${scheduleSummary(context.config)}`);
   console.log(`Last result: ${parseSchtasks(output, 'Last Result')}`);
   console.log(`Run count: ${counts.runs}`);
   console.log(`Success count: ${counts.success}`);

@@ -5,7 +5,7 @@ const { spawnSync } = require('child_process');
 const { root } = require('../paths');
 const { run, runInherited } = require('../process');
 const { logCounts, lastRunTime } = require('../log');
-const { splitTime, nextRunTime } = require('../config');
+const { splitTime, nextRunTime, scheduleSummary } = require('../config');
 
 function domain() {
   return `gui/${process.getuid()}`;
@@ -122,6 +122,7 @@ function status(context) {
   console.log(`Current state: ${state}`);
   console.log(`Last run: ${lastRunTime(context.logPath)}`);
   console.log(`Next run: ${nextRunTime(context.config)}`);
+  console.log(`Configured schedule: ${scheduleSummary(context.config)}`);
   console.log(`Run count: ${counts.runs}`);
   console.log(`Success count: ${counts.success}`);
   console.log(`Failed count: ${counts.failed}`);

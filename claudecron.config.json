@@ -9,7 +9,7 @@
   "schedules": [
     {
       "days": ["Wednesday", "Thursday"],
-      "times": ["08:30","14:14", "13:30", "18:30", "23:30"]
+      "times": ["09:30","14:14", "13:30", "18:30", "23:30"]
     },
     {
       "days": ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
