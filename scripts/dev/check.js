@@ -1,8 +1,8 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { configTemplatePath, root } = require('./lib/paths');
-const { loadConfig, calendarEntryCount } = require('./lib/config');
+const { configTemplatePath, root } = require('../lib/paths');
+const { loadConfig, calendarEntryCount } = require('../lib/config');
 
 function checkNode(file) {
   const result = spawnSync(process.execPath, ['--check', file], { cwd: root, encoding: 'utf8' });
@@ -18,7 +18,7 @@ function jsFiles(dir) {
 }
 
 function checkPowerShell() {
-  const command = "$null = [scriptblock]::Create((Get-Content -Raw scripts\\install-task.ps1)); $null = [scriptblock]::Create((Get-Content -Raw scripts\\run-claude.ps1)); Write-Output 'powershell ok'";
+  const command = "$null = [scriptblock]::Create((Get-Content -Raw scripts\\windows\\install-task.ps1)); $null = [scriptblock]::Create((Get-Content -Raw scripts\\windows\\run-claude.ps1)); Write-Output 'powershell ok'";
   const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'PowerShell parse failed.');
 }

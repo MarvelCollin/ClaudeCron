@@ -1,8 +1,9 @@
 param(
-  [string]$ConfigPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'claudecron.config.json')
+  [string]$ConfigPath = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'claudecron.config.json')
 )
 
-$root = Split-Path -Parent $PSScriptRoot
+$ErrorActionPreference = 'Stop'
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $config = Get-Content -Raw $ConfigPath | ConvertFrom-Json
 $taskName = [string]$config.taskName
 if ([string]::IsNullOrWhiteSpace($taskName)) { throw 'taskName is required.' }

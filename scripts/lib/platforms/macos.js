@@ -65,7 +65,7 @@ function calendarXml(context) {
 }
 
 function plist(context) {
-  const runner = path.join(root, 'scripts', 'run-claude.js');
+  const runner = path.join(root, 'scripts', 'runner', 'run-claude.js');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

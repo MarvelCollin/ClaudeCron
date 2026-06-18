@@ -1,8 +1,8 @@
 const { spawnSync } = require('child_process');
-const { root } = require('./lib/paths');
-const { loadConfig } = require('./lib/config');
-const { appendLog } = require('./lib/log');
-const { claudeCommand } = require('./lib/claude');
+const { root } = require('../lib/paths');
+const { loadConfig } = require('../lib/config');
+const { appendLog } = require('../lib/log');
+const { claudeCommand } = require('../lib/claude');
 
 function argValue(name) {
   const index = process.argv.indexOf(name);

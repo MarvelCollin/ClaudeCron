@@ -15,7 +15,7 @@ function install(context) {
     '-ExecutionPolicy',
     'Bypass',
     '-File',
-    fromRoot('scripts', 'install-task.ps1'),
+    fromRoot('scripts', 'windows', 'install-task.ps1'),
     '-ConfigPath',
     context.configPath,
   ]);

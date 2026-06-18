@@ -38,11 +38,11 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node scripts/run-claude.js",
+    "start": "node scripts/runner/run-claude.js",
     "login": "claude auth",
-    "task": "node scripts/task.js",
-    "install-task": "node scripts/task.js install",
-    "check": "node scripts/check.js",
+    "task": "node scripts/cli/task.js",
+    "install-task": "node scripts/cli/task.js install",
+    "check": "node scripts/dev/check.js",
     "prepublishOnly": "npm run check"
   }
 }

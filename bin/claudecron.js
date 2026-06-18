@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-require('../scripts/task');
+require('../scripts/cli/task');
