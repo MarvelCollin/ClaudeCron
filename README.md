@@ -5,7 +5,7 @@ Command-line scheduler for running Claude CLI prompts in the background.
 ## Install
 
 ```bash
-npm install -g @marvelcollin/claudecron
+npm i -g claudecron-cli
 claudecron
 ```
 
@@ -39,7 +39,7 @@ macOS:
 ~/Library/Application Support/ClaudeCron/claudecron.config.json
 ```
 
-Use `Configure Schedule` in the menu for the easiest setup. It accepts day shortcuts like `all`, `weekdays`, `weekend`, or `mon,wed,fri`, and comma-separated 24-hour times like `08:30,13:30,18:30`.
+Use `Configure Schedule` in the menu for the easiest setup. It opens the real JSON config file; save and close the editor, then choose whether to apply the updated background schedule.
 
 You can also edit the config file manually.
 
@@ -55,11 +55,11 @@ You can also edit the config file manually.
   "schedules": [
     {
       "days": ["Wednesday", "Thursday"],
-      "times": ["08:30", "13:30", "18:30", "23:30"]
+      "times": ["00:00", "05:00", "10:00", "15:00", "20:00"]
     },
     {
       "days": ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
-      "times": ["04:30", "09:30", "14:30", "19:30"]
+      "times": ["00:00", "05:00", "10:00", "15:00", "20:00"]
     }
   ]
 }

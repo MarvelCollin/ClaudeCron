@@ -1,5 +1,5 @@
 {
-  "name": "@marvelcollin/claudecron",
+  "name": "claudecron-cli",
   "version": "1.0.1",
   "description": "Command-line Claude automation for scheduled runs.",
   "homepage": "https://github.com/MarvelCollin/ClaudeCron#readme",
